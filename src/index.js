@@ -13,14 +13,17 @@ import { commandText, tokenSummary } from './diagnostics.js'
 
 const SSO_HANDLER = 'sso'
 
+// Callers supply only non-identifying flow markers, never token or activity payloads.
 function log (event, data) {
   console.log(`[sso-test] ${event} ${JSON.stringify(data)}`)
 }
 
+// Build an SDK route selector that tolerates Teams/Copilot command formatting.
 const isCommand = (name) => async (context) =>
   context.activity.type === ActivityTypes.Message && commandText(context.activity.text) === name
 
 class SsoTestAgent extends AgentApplication {
+  // Require the configured SSO handler only for whoami; keep echo and logout accessible.
   constructor () {
     super({ storage: new MemoryStorage() })
 
@@ -34,7 +37,7 @@ class SsoTestAgent extends AgentApplication {
     this.onActivity(ActivityTypes.Message, this.echo)
   }
 
-  // Log flow markers only, never tokens, claims, activity bodies, or sign-in URLs.
+  // Observe sign-in traffic without payloads, then let the SDK handle authentication and routing.
   async run (context) {
     const activity = context.activity
     if (activity.type === ActivityTypes.Invoke && activity.name?.startsWith('signin/')) {
@@ -60,10 +63,12 @@ class SsoTestAgent extends AgentApplication {
     return super.run(context)
   }
 
+  // Confirm channel delivery without initiating user authorization.
   echo = async (context) => {
     await context.sendActivity(`Echo: ${commandText(context.activity.text)}\n\nType **whoami** to test SSO.`)
   }
 
+  // Read the token after the route's SSO handler completes; return diagnostic metadata only.
   whoami = async (context) => {
     const tokenResponse = await this.authorization.getToken(context, SSO_HANDLER)
     if (!tokenResponse?.token) {
@@ -78,6 +83,7 @@ class SsoTestAgent extends AgentApplication {
     ))
   }
 
+  // Clear the user's Token Service cache, not their Teams session or Entra consent.
   logout = async (context, state) => {
     await this.authorization.signOut(context, state)
     await context.sendActivity('Signed out. The next **whoami** starts a fresh sign-in.')
