@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Documented Microsoft Bot Service Token Store public application encoding"
+regexTarget = "secret"
+regexes = ['''^9ExAW52n_ky4ZiS_jhpJIQ$''']
