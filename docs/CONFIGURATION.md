@@ -111,7 +111,19 @@ The portal's **Test Connection** checks the OAuth provider and may prompt for co
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
 | Startup command | `npm start` |
 
-The `sso` handler is attached to `whoami`. `logout` calls SDK sign-out. The SDK handles OAuth cards, `signin/tokenExchange` and `signin/verifyState`. Keep the messaging endpoint protected by SDK authentication; do not add an anonymous bypass. `/health` is intentionally public and returns only service status.
+### Why these runtime settings are needed
+
+These long environment-variable names are **configuration conventions for this Agents SDK and sample**, not universal Teams SSO requirements. Configuring the manifest, Entra app and Azure Bot does not automatically wire the running JavaScript application to them.
+
+- **Bot service identity:** attaching the user-assigned managed identity makes it available to App Service. The SDK's `authType`, `clientId` and `tenantId` settings select/configure that identity to authenticate outbound bot service calls, such as channel replies. They describe the **bot**, not the signed-in user's identity; use `<bot-id>` and `<tenant-id>` from the mapping above.
+- **Outbound connection mapping:** `connectionsMap__0__connection` selects the named `serviceConnection`, while `connectionsMap__0__serviceUrl=*` makes it the fallback mapping for outbound channel service URLs. The wildcard is a connection-routing rule, **not an inbound authorization bypass**. Keep `/api/messages` protected by SDK authentication; `/health` is intentionally public and returns only service status.
+- **User authorization wiring:** the application attaches the named `sso` SDK handler to `whoami`. Its `azureBotOAuthConnectionName` must exactly match the Azure Bot OAuth connection name (`SsoConnection` here). The SDK uses that connection to obtain the user's token through the configured Entra/Teams flow, handling OAuth cards, `signin/tokenExchange` and `signin/verifyState`. `logout` calls SDK sign-out. The handler's `title` and `text` customize the fallback sign-in card; those presentation strings are not prerequisites for silent SSO.
+
+The **Teams manifest** identifies the SSO app/resource for the client; the **Entra app** defines the exposed scope, client pre-authorization, applicable consent and federated trust; the **Azure Bot OAuth connection** selects that app/provider, scopes and token-exchange resource. The **runtime SDK settings** connect the executing app's bot identity and `sso` handler to those services. All four surfaces must be aligned, but each has a different responsibility.
+
+`SCM_DO_BUILD_DURING_DEPLOYMENT=true` enables the build used by this App Service deployment, and `npm start` launches the Node.js app. They are **build/start controls, not SSO-specific settings**; their necessity depends on the deployment method (for example, a prebuilt deployment can use different build controls).
+
+Azure exposes App Service application settings as process environment variables, so this deployment does **not** require a `.env` file. `.env.example` is only a placeholder onboarding template and is not loaded at runtime. For local use, copy it to an ignored `.env`, replace the placeholders, and run `npm run dev`, which explicitly loads `.env` through Node's `--env-file=.env` option. `npm start` does not load either file. A local `.env` still does not make Azure managed identity available on a developer laptop.
 
 Do not enable `DEBUG=agents:*` by default: verbose dependency logs may contain identities or authentication context. Application flow markers omit invoke bodies, tokens, user claims and sign-in URLs.
 
