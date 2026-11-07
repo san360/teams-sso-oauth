@@ -45,10 +45,11 @@ export function signedInCard (summary) {
     description: 'The SSO handler returned a user token. These decoded details are diagnostic only, not token validation or an access-control decision.',
     facts: [
       { title: 'Status', value: 'signedIn: true' },
+      { title: 'JWT (fully masked)', value: '[header redacted].[payload redacted].[signature redacted]' },
       { title: 'Token version', value: version },
       { title: 'Expires at (UTC)', value: summary.expiresAt }
     ],
-    next: 'Type logout to clear the Token Service cache, then whoami to test a fresh sign-in. No identity claims or raw token are shown.'
+    next: 'The bearer token is deliberately hidden, including every prefix and suffix. Type logout to clear the Token Service cache, then whoami to test a fresh sign-in. No identity claims or raw token are shown.'
   })
 }
 

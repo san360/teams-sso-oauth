@@ -27,7 +27,7 @@ Run `node scripts\check-publication.js --staged` before a commit, and `node scri
 | Unsupported/blocked silent flow | Interactive sign-in/consent or a clear failure; do not label it silent SSO success |
 | After reviewed optional admin consent | Repeat the same matrix; compare without assuming consent fixes URI/FIC mismatches |
 | `help` / echo / logout | Informational cards with clear headings and next steps; no extra sign-in requirement |
-| Sign-in success card | Selected status/version/UTC expiry only, explicit diagnostic-not-validation warning |
+| Sign-in success card | Fixed fully masked JWT schematic, selected status/version/UTC expiry, explicit diagnostic-not-validation warning; no token fragments |
 | Sign-in failure card | Safe details, configuration guidance and reference matching `signInFailure` log; no provider message |
 | Native OAuth prompt | SDK-generated sign-in button/resource unchanged; silent exchange still works where supported |
 | Card fallback and accessibility | Complete text fallback, wrapped text, readable labels and status words independent of color |
@@ -63,6 +63,8 @@ After deploying updated source, repeat `logout` and `whoami`. Code published to 
 The application sends informational Adaptive Cards 1.2 (`TextBlock` and `FactSet`) with the same full fallback in activity `text` and card `fallbackText`. There are no custom authentication actions, inputs, refreshes or remote images. In clients that display both activity text and attachments, the fallback may appear alongside the card. Check desktop, mobile and your supported Copilot host; actual rendering is host-controlled.
 
 The echo card preserves the existing normalized echo behavior and escapes Markdown formatting in its card body. Echo still repeats user input; it is not anonymization. Help explains commands without requiring authorization. Logout is shown only after SDK sign-out succeeds; the sign-in-required status does not pretend authorization completed.
+
+`whoami` deliberately displays `[header redacted].[payload redacted].[signature redacted]` instead of the JWT. Tests use a recognizable synthetic JWT and assert that its complete value, segments, prefixes/suffixes and identity claims are absent from the card and fallback. Diagnostic parsing rejects malformed compact-token shapes and non-numeric expiry values; this structural check is not signature validation. Only known version values are retained. Never paste a real bearer token into chat to compare it with the schematic.
 
 Public schema references: [AdaptiveCard fallback](https://learn.microsoft.com/adaptive-cards/schema-explorer/adaptive-card#properties), [TextBlock](https://learn.microsoft.com/adaptive-cards/schema-explorer/text-block), [FactSet](https://learn.microsoft.com/adaptive-cards/schema-explorer/fact-set).
 

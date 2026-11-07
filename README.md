@@ -29,6 +29,8 @@ When sign-in token retrieval fails on `whoami`, the bot reports a safe diagnosti
 
 Replies use compact Adaptive Cards with status headings, readable diagnostic facts and a clear next step. Success, sign-in failure, sign-in-required status, logout, help and echo each have a purpose-built layout and complete plain-text fallback. Status is expressed in words, not color alone.
 
+The successful `whoami` card includes **JWT (fully masked)**: `[header redacted].[payload redacted].[signature redacted]`, alongside allowlisted token version and UTC expiry. This is a fixed schematic, not token content: no prefix, suffix, raw bearer credential or decoded identity claims are displayed or logged. The text fallback applies the same complete masking.
+
 **Sign-in remains native:** the SDK-generated OAuth card, its sign-in button and token-exchange resource are unchanged. The informational reply cards contain no custom login links, input fields or submit actions. They use schema **1.2** with basic `TextBlock`/`FactSet` elements for conservative Teams/Copilot compatibility; verify rendering in your actual clients after deployment. These source changes do not update the live service automatically.
 
 ## Quick start

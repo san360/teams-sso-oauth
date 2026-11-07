@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { echoCard, helpCard, signedInCard, signedOutCard, signInRequiredCard, replyCard } from '../src/cards.js'
+import { tokenSummary } from '../src/diagnostics.js'
 
 const summary = { signedIn: true, tokenVersion: '2.0', expiresAt: '2033-05-18T03:33:20.000Z' }
 
@@ -64,4 +65,26 @@ test('echo preserves normalized text in fallback and escapes card Markdown forma
   const description = activity.attachments[0].content.body[2].text
   assert.ok(description.includes('\\[synthetic link\\]\\(https://example\\.com\\) \\*test\\*'))
   assert.match(activity.text, /does not require sign-in/)
+})
+
+test('recognizable synthetic JWT is completely masked in card and all fallback text', () => {
+  const claims = { ver: '2.0', exp: 2000000000, name: 'synthetic-private-name', tid: 'synthetic-private-directory' }
+  const parts = [
+    Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url'),
+    Buffer.from(JSON.stringify(claims)).toString('base64url'),
+    Buffer.from('synthetic-private-signature').toString('base64url')
+  ]
+  const token = parts.join('.')
+  const activity = signedInCard(tokenSummary(token))
+  const output = JSON.stringify(activity)
+  assert.match(activity.text, /JWT \(fully masked\): \[header redacted\]\.\[payload redacted\]\.\[signature redacted\]/)
+  assert.match(activity.text, /bearer token is deliberately hidden/)
+  assert.equal(activity.attachments[0].content.fallbackText, activity.text)
+  for (const part of parts) {
+    assert.ok(!output.includes(part))
+    assert.ok(!output.includes(part.slice(0, 12)))
+    assert.ok(!output.includes(part.slice(-12)))
+  }
+  assert.ok(!output.includes(token))
+  assert.doesNotMatch(output, /synthetic-private/)
 })

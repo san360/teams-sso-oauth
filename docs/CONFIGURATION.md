@@ -135,6 +135,8 @@ The `title` and `text` settings above belong to the **SDK OAuth prompt**. Use co
 
 Application status replies use Adaptive Cards 1.2 with plain-text fallbacks. They show only selected diagnostics; unknown token-version values are shown as `Not available`, and malformed expiry diagnostics fail rather than displaying arbitrary payloads. Successful token acquisition is not JWT signature validation. See the [card UX guide](../README.md#card-based-conversation) and [validation matrix](TEST-RESULTS.md).
 
+The success card's masked JWT is a constant redacted schematic, not a configurable full-token debug view. No runtime setting enables raw credentials or partial token display. Native OAuth and invoke payloads remain SDK-managed; avoid verbose dependency logs that may contain authentication data.
+
 ## 5. Configure the Teams / Microsoft 365 manifest
 
 The placeholder template uses manifest schema `1.24` and personal/Copilot bot scopes:
