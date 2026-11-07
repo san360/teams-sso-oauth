@@ -7,6 +7,7 @@ A minimal JavaScript custom engine agent using Microsoft 365 Agents SDK. It demo
 | `hello` (or any other text) | Echo without sign-in; confirms message delivery |
 | `whoami` | Triggers the `sso` authorization handler; shows sign-in status, token version and expiry, not user identity or the token |
 | `logout` | Clears the Bot Framework Token Service cache for this user; does not sign out Teams or revoke Entra consent |
+| `help` | Shows the command guide without sign-in |
 
 This is a diagnostic sample, not a production identity service. It uses in-memory storage and echoes user input. Do not send sensitive messages. SDK authentication protects the bot endpoint; decoded token metadata is diagnostic only and must never be used for access-control decisions.
 
@@ -23,6 +24,12 @@ This is a diagnostic sample, not a production identity service. It uses in-memor
 **Two independent concerns:** the managed identity authenticates the **bot's service calls**; the separate Entra SSO app and named OAuth connection obtain the **user's token**. A working echo proves channel delivery, not user SSO.
 
 When sign-in token retrieval fails on `whoami`, the bot reports a safe diagnostic code/status and a generated reference instead of the SDK's generic agent-error reply. Administrators can match that reference to the application's `signInFailure` log marker. Raw provider error text is deliberately not displayed.
+
+## Card-based conversation
+
+Replies use compact Adaptive Cards with status headings, readable diagnostic facts and a clear next step. Success, sign-in failure, sign-in-required status, logout, help and echo each have a purpose-built layout and complete plain-text fallback. Status is expressed in words, not color alone.
+
+**Sign-in remains native:** the SDK-generated OAuth card, its sign-in button and token-exchange resource are unchanged. The informational reply cards contain no custom login links, input fields or submit actions. They use schema **1.2** with basic `TextBlock`/`FactSet` elements for conservative Teams/Copilot compatibility; verify rendering in your actual clients after deployment. These source changes do not update the live service automatically.
 
 ## Quick start
 

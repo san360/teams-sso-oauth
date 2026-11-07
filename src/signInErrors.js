@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { commandText } from './diagnostics.js'
+import { replyCard } from './cards.js'
 
 const signInCodes = new Set([-120510, -120591])
 const providerCodes = new Set(['ServiceError', 'invalid_grant', 'invalid_client', 'access_denied', 'interaction_required', 'consent_required'])
@@ -20,13 +21,16 @@ export async function reportSignInFailure (context, error, log) {
     httpStatus === undefined ? undefined : `HTTP ${httpStatus}`,
     providerCode
   ].filter(Boolean).join(', ')
-  await context.sendActivity(
-    '**Sign-in failed**\n\n' +
-    (details ? `**Details:** ${details}\n\n` : '') +
-    'Ask the deployment administrator to verify that the sso handler uses the exact Azure Bot OAuth connection name, ' +
-    'then check its Entra configuration and consent. ' +
-    `\n\n**Reference:** \`${reference}\``
-  )
+  await context.sendActivity(replyCard({
+    title: 'Sign-in failed',
+    color: 'Attention',
+    description: 'Ask the deployment administrator to verify that the sso handler uses the exact Azure Bot OAuth connection name, then check its Entra configuration and consent.',
+    facts: [
+      ...(details ? [{ title: 'Details', value: details }] : []),
+      { title: 'Reference', value: reference }
+    ],
+    next: 'Share this reference with the administrator to find the matching signInFailure log marker. Type whoami to retry after configuration is checked.'
+  }))
 }
 
 // Token retrieval can throw before onSignInFailure; only intercept known whoami message failures.

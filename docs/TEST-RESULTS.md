@@ -6,7 +6,7 @@ This public file is a **test procedure**, not a record of a live deployment. It 
 
 ## Offline checks
 
-Run `npm ci` and `npm test`. Tests cover formatted command matching, non-identifying token summaries, explicit failure for malformed diagnostic token payloads, safe sign-in error reporting and reference matching, unrelated-error propagation, exact index scanning, historic identifiers, private commit metadata and PNG trailing content. These tests do not validate JWT signatures or prove Azure authentication.
+Run `npm ci` and `npm test`. Tests cover formatted command matching, non-identifying token summaries, explicit failure for malformed diagnostic token payloads, reply-card structure and fallbacks, card privacy, safe sign-in error reporting and reference matching, real agent-method wiring, unchanged OAuth attachments/invoke responses, unrelated-error propagation, exact index scanning, historic identifiers, private commit metadata and PNG trailing content. These tests do not validate JWT signatures or prove Azure authentication or visual rendering in a live client.
 
 Run `node scripts\check-publication.js --staged` before a commit, and `node scripts\check-publication.js --history` before public publication. See [scan limitations](PUBLICATION.md).
 
@@ -26,6 +26,11 @@ Run `node scripts\check-publication.js --staged` before a commit, and `node scri
 | `logout`, then `whoami` | New Token Service authorization cycle; the client may reuse its own Entra session |
 | Unsupported/blocked silent flow | Interactive sign-in/consent or a clear failure; do not label it silent SSO success |
 | After reviewed optional admin consent | Repeat the same matrix; compare without assuming consent fixes URI/FIC mismatches |
+| `help` / echo / logout | Informational cards with clear headings and next steps; no extra sign-in requirement |
+| Sign-in success card | Selected status/version/UTC expiry only, explicit diagnostic-not-validation warning |
+| Sign-in failure card | Safe details, configuration guidance and reference matching `signInFailure` log; no provider message |
+| Native OAuth prompt | SDK-generated sign-in button/resource unchanged; silent exchange still works where supported |
+| Card fallback and accessibility | Complete text fallback, wrapped text, readable labels and status words independent of color |
 
 Pre-authorized clients can acquire the sample API scope without an interactive consent prompt in some configurations. That does not prove all tenants, users, scopes or downstream APIs will behave identically. Conditional Access and tenant consent restrictions still apply.
 
@@ -52,5 +57,13 @@ The sample intercepts known sign-in errors (`-120510`, or missing-connection con
 The matching `signInFailure` log marker contains only that reference and allowlisted diagnostic fields, never provider messages, tokens, claims, connection values, URLs or stacks. The existing sign-in-failure callback uses the same safe reporting. Unrelated errors, other commands and invoke turns retain SDK error handling; startup configuration errors still fail startup. A failure while sending the error response is not swallowed. Verbose SDK/service logs remain a separate privacy concern.
 
 After deploying updated source, repeat `logout` and `whoami`. Code published to GitHub does not automatically update the running Azure service.
+
+### Reply-card compatibility
+
+The application sends informational Adaptive Cards 1.2 (`TextBlock` and `FactSet`) with the same full fallback in activity `text` and card `fallbackText`. There are no custom authentication actions, inputs, refreshes or remote images. In clients that display both activity text and attachments, the fallback may appear alongside the card. Check desktop, mobile and your supported Copilot host; actual rendering is host-controlled.
+
+The echo card preserves the existing normalized echo behavior and escapes Markdown formatting in its card body. Echo still repeats user input; it is not anonymization. Help explains commands without requiring authorization. Logout is shown only after SDK sign-out succeeds; the sign-in-required status does not pretend authorization completed.
+
+Public schema references: [AdaptiveCard fallback](https://learn.microsoft.com/adaptive-cards/schema-explorer/adaptive-card#properties), [TextBlock](https://learn.microsoft.com/adaptive-cards/schema-explorer/text-block), [FactSet](https://learn.microsoft.com/adaptive-cards/schema-explorer/fact-set).
 
 Entra sign-in logs may be delayed. Diagnostic scripts require separate reporting permissions and can return restricted data. Never copy raw tokens into web tools or public issue reports.

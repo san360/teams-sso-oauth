@@ -69,8 +69,8 @@ sequenceDiagram
     Store->>Entra: User authorization through configured FIC provider
     Entra-->>Store: User token result
     Store-->>Agent: Token available to authorization handler
-    Agent->>Channel: SDK invoke response and signed-in diagnostics
-    Channel-->>Client: Status, token version and expiry only
+    Agent->>Channel: Unchanged SDK invoke response and signed-in reply card
+    Channel-->>Client: Status, token version and expiry with text fallback
 ```
 
 Bot-to-channel and bot-to-Token-Service calls use **bot credentials**. Client acquisition and the OAuth exchange concern the **user's token**. The resource here is the sample's own API, not Microsoft Graph; downstream APIs need their own permissions and SDK OBO or separate connection configuration.
@@ -90,7 +90,7 @@ sequenceDiagram
     Store-->>Agent: Unsuccessful response, for example HTTP 500 ServiceError
     Note over Agent: SDK wraps thrown sign-in failure as -120510<br/>before onSignInFailure callback
     Agent->>Log: signInFailure with generated reference and safe fields
-    Agent-->>Client: Sign-in failed, safe details and matching reference
+    Agent-->>Client: Failure reply card with safe details, reference and text fallback
     Note over Client,Agent: Administrator compares connection names<br/>then checks Entra configuration and consent
 ```
 
@@ -99,3 +99,5 @@ The example status/code is illustrative. A generic `ServiceError` does **not** e
 The handler intercepts known sign-in exceptions only on `whoami` message turns. It does not replace SDK handling for unrelated errors, other commands or invoke turns. Startup misconfiguration still fails startup. Both this path and the sign-in-failure callback omit arbitrary provider text, tokens, claims, URLs and stacks from the application response/log marker.
 
 See [troubleshooting](TEST-RESULTS.md#token-retrieval-fails-before-the-sign-in-callback) for diagnostic scope and [deployment](DEPLOYMENT.md#5-updates-and-cleanup) to apply source changes. Publishing a commit alone does not update App Service.
+
+Reply cards are presentation only: they have no authentication actions and never replace the SDK's native OAuth card. Success, failure, sign-in-required status, help, echo and logout retain their underlying command/authorization semantics.

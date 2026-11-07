@@ -129,6 +129,12 @@ Azure exposes App Service application settings as process environment variables,
 
 Do not enable `DEBUG=agents:*` by default: verbose dependency logs may contain identities or authentication context. Application flow markers omit invoke bodies, tokens, user claims and sign-in URLs.
 
+### Native sign-in presentation versus reply cards
+
+The `title` and `text` settings above belong to the **SDK OAuth prompt**. Use concise, public presentation text such as `Sign in` and `Sign in to the SSO test agent`; changing these settings is a deployment configuration update, not part of rendering the reply cards. The sample does not create its own login URL or rewrite OAuth cards.
+
+Application status replies use Adaptive Cards 1.2 with plain-text fallbacks. They show only selected diagnostics; unknown token-version values are shown as `Not available`, and malformed expiry diagnostics fail rather than displaying arbitrary payloads. Successful token acquisition is not JWT signature validation. See the [card UX guide](../README.md#card-based-conversation) and [validation matrix](TEST-RESULTS.md).
+
 ## 5. Configure the Teams / Microsoft 365 manifest
 
 The placeholder template uses manifest schema `1.24` and personal/Copilot bot scopes:

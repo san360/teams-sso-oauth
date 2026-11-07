@@ -3,14 +3,16 @@
 //   any text  -> echo (no sign-in required, proves message delivery)
 //   whoami    -> requires sign-in via the "sso" handler, replies with non-identifying status
 //   logout    -> clears the cached user token from the Bot Framework Token Service
+//   help      -> shows commands without sign-in
 //
 // All configuration comes from environment variables (see .env.example).
 
 import { startServer } from '@microsoft/agents-hosting-express'
-import { AgentApplication, MemoryStorage, MessageFactory } from '@microsoft/agents-hosting'
+import { AgentApplication, MemoryStorage } from '@microsoft/agents-hosting'
 import { ActivityTypes } from '@microsoft/agents-activity'
 import { commandText, tokenSummary } from './diagnostics.js'
 import { reportSignInFailure, runWithSignInErrors } from './signInErrors.js'
+import { echoCard, helpCard, signedInCard, signedOutCard, signInRequiredCard } from './cards.js'
 
 const SSO_HANDLER = 'sso'
 
@@ -34,6 +36,7 @@ class SsoTestAgent extends AgentApplication {
 
     this.onMessage(isCommand('whoami'), this.whoami, [SSO_HANDLER])
     this.onMessage(isCommand('logout'), this.logout)
+    this.onMessage(isCommand('help'), async (context) => context.sendActivity(helpCard()))
     this.onActivity(ActivityTypes.Message, this.echo)
   }
 
@@ -65,28 +68,25 @@ class SsoTestAgent extends AgentApplication {
 
   // Confirm channel delivery without initiating user authorization.
   echo = async (context) => {
-    await context.sendActivity(`Echo: ${commandText(context.activity.text)}\n\nType **whoami** to test SSO.`)
+    await context.sendActivity(echoCard(commandText(context.activity.text)))
   }
 
   // Read the token after the route's SSO handler completes; return diagnostic metadata only.
   whoami = async (context) => {
     const tokenResponse = await this.authorization.getToken(context, SSO_HANDLER)
     if (!tokenResponse?.token) {
-      await context.sendActivity('No token available yet.')
+      await context.sendActivity(signInRequiredCard())
       return
     }
     const summary = tokenSummary(tokenResponse.token)
     log('whoami', { signedIn: true })
-    await context.sendActivity(MessageFactory.text(
-      'Signed in. Non-identifying token status (not a token validation result):\n\n```json\n' +
-      JSON.stringify(summary, null, 2) + '\n```'
-    ))
+    await context.sendActivity(signedInCard(summary))
   }
 
   // Clear the user's Token Service cache, not their Teams session or Entra consent.
   logout = async (context, state) => {
     await this.authorization.signOut(context, state)
-    await context.sendActivity('Signed out. The next **whoami** starts a fresh sign-in.')
+    await context.sendActivity(signedOutCard())
   }
 }
 
