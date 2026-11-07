@@ -29,12 +29,12 @@ test('wrong connection surfaces failed token retrieval safely with matching refe
   const f = fixture('<strong>whoami</strong>')
   await runWithSignInErrors(f.context, async () => { throw retrievalError() }, f.log)
   assert.equal(f.messages.length, 1)
-  assert.match(f.messages[0].text, /SDK -120510, HTTP 500, ServiceError/)
-  assert.match(f.messages[0].text, /exact Azure Bot OAuth connection name/)
+  assert.match(f.messages[0].attachments[0].content.fallbackText, /SDK -120510, HTTP 500, ServiceError/)
+  assert.match(f.messages[0].attachments[0].content.fallbackText, /exact Azure Bot OAuth connection name/)
   assert.match(f.events[0].reference, /^[0-9a-f]{16}$/)
-  assert.ok(f.messages[0].text.includes(f.events[0].reference))
+  assert.ok(f.messages[0].attachments[0].content.fallbackText.includes(f.events[0].reference))
   const card = f.messages[0].attachments[0].content
-  assert.equal(card.fallbackText, f.messages[0].text)
+  assert.equal(Object.hasOwn(f.messages[0], 'text'), false)
   assert.equal(card.body.find(item => item.type === 'FactSet').facts.find(fact => fact.title === 'Reference').value, f.events[0].reference)
   assert.deepEqual(Object.keys(f.events[0]).sort(), ['event', 'httpStatus', 'providerCode', 'reference', 'sdkCode'])
   assert.doesNotMatch(JSON.stringify([f.messages, f.events]), /synthetic|stack|connectionName/)
@@ -43,14 +43,14 @@ test('wrong connection surfaces failed token retrieval safely with matching refe
 test('missing connection preserves observed status without claiming provider said not found', async () => {
   const f = fixture()
   await runWithSignInErrors(f.context, async () => { throw retrievalError(404) }, f.log)
-  assert.match(f.messages[0].text, /HTTP 404/)
+  assert.match(f.messages[0].attachments[0].content.fallbackText, /HTTP 404/)
   assert.doesNotMatch(JSON.stringify(f.messages[0]), /connection not found/i)
 })
 
 test('missing connection configuration code is handled if raised during whoami', async () => {
   const f = fixture()
   await runWithSignInErrors(f.context, async () => { throw { code: -120591 } }, f.log)
-  assert.match(f.messages[0].text, /SDK -120591/)
+  assert.match(f.messages[0].attachments[0].content.fallbackText, /SDK -120591/)
 })
 
 test('non-auth errors and failures on other routes or invokes retain SDK handling', async () => {

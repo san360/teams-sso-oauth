@@ -27,7 +27,7 @@ When sign-in token retrieval fails on `whoami`, the bot reports a safe diagnosti
 
 ## Card-based conversation
 
-Replies use compact Adaptive Cards with status headings, readable diagnostic facts and a clear next step. Success, sign-in failure, sign-in-required status, logout, help and echo each have a purpose-built layout and complete plain-text fallback. Status is expressed in words, not color alone.
+Replies use compact Adaptive Cards with status headings, readable diagnostic facts and a clear next step. Success, sign-in failure, sign-in-required status, logout, help and echo each send one card-only activity, with complete `fallbackText` inside the card. Activity `text` is omitted so card-capable clients do not display a duplicate prose reply. Status is expressed in words, not color alone.
 
 The successful `whoami` card includes **JWT (fully masked)**: `[header redacted].[payload redacted].[signature redacted]`, alongside allowlisted token version and UTC expiry. This is a fixed schematic, not token content: no prefix, suffix, raw bearer credential or decoded identity claims are displayed or logged. The text fallback applies the same complete masking.
 

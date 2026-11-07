@@ -15,8 +15,6 @@ export function replyCard ({ title, description, facts = [], next, color = 'Defa
   if (next) body.push({ type: 'TextBlock', text: next, separator: true, spacing: 'Medium', wrap: true })
   return {
     type: 'message',
-    text,
-    textFormat: 'plain',
     attachments: [{
       contentType: 'application/vnd.microsoft.card.adaptive',
       content: {
@@ -92,7 +90,7 @@ export function echoCard (text) {
     description: `Echo: ${escaped}`,
     next: 'This reply does not require sign-in. Type whoami to test SSO, or help for commands.'
   })
-  activity.text = activity.attachments[0].content.fallbackText = [
+  activity.attachments[0].content.fallbackText = [
     'Channel connected', `Echo: ${text}`, 'This reply does not require sign-in. Type whoami to test SSO, or help for commands.'
   ].join('\n\n')
   return activity

@@ -12,26 +12,28 @@ test('reply cards use a portable informational schema with complete text fallbac
   ]
   for (const activity of activities) {
     assert.equal(activity.type, 'message')
-    assert.equal(activity.textFormat, 'plain')
+    assert.equal(Object.hasOwn(activity, 'text'), false)
+    assert.equal(Object.hasOwn(activity, 'textFormat'), false)
     assert.equal(activity.attachments.length, 1)
     assert.equal(activity.attachments[0].contentType, 'application/vnd.microsoft.card.adaptive')
     const card = activity.attachments[0].content
     assert.equal(card.type, 'AdaptiveCard')
     assert.equal(card.version, '1.2')
     assert.equal(card.lang, 'en')
-    assert.equal(card.fallbackText, activity.text)
+    assert.equal(typeof card.fallbackText, 'string')
+    assert.ok(card.fallbackText.length > 0)
     assert.deepEqual(Object.keys(card).sort(), ['$schema', 'body', 'fallbackText', 'lang', 'type', 'version'])
     for (const element of card.body) {
       assert.ok(['TextBlock', 'FactSet'].includes(element.type))
       if (element.type === 'TextBlock') {
         assert.equal(typeof element.text, 'string')
         assert.equal(element.wrap, true)
-        assert.ok(activity.text.includes(element.text) || element.text === 'SSO DIAGNOSTICS')
+        assert.ok(card.fallbackText.includes(element.text) || element.text === 'SSO DIAGNOSTICS')
       } else {
         for (const fact of element.facts) {
           assert.equal(typeof fact.title, 'string')
           assert.equal(typeof fact.value, 'string')
-          assert.ok(activity.text.includes(fact.value))
+          assert.ok(card.fallbackText.includes(fact.value))
         }
       }
     }
@@ -43,28 +45,28 @@ test('success selects only metadata and does not leak extra claims or arbitrary 
   const privateValue = 'synthetic-private-claim'
   const card = signedInCard({ ...summary, name: privateValue, token: privateValue, tid: privateValue })
   assert.ok(!JSON.stringify(card).includes(privateValue))
-  assert.match(card.text, /signedIn: true/)
-  assert.match(card.text, /not token validation/)
-  assert.match(card.text, /UTC/)
-  assert.match(card.text, /2\.0/)
+  assert.match(card.attachments[0].content.fallbackText, /signedIn: true/)
+  assert.match(card.attachments[0].content.fallbackText, /not token validation/)
+  assert.match(card.attachments[0].content.fallbackText, /UTC/)
+  assert.match(card.attachments[0].content.fallbackText, /2\.0/)
   const unknownVersion = signedInCard({ ...summary, tokenVersion: privateValue })
   assert.ok(!JSON.stringify(unknownVersion).includes(privateValue))
-  assert.match(unknownVersion.text, /Not available/)
+  assert.match(unknownVersion.attachments[0].content.fallbackText, /Not available/)
   assert.throws(() => signedInCard({ ...summary, expiresAt: privateValue }), TypeError)
 })
 
 test('help, sign-in-required and logout describe existing command and session semantics', () => {
-  assert.match(helpCard().text, /hello \/ other text[\s\S]*whoami[\s\S]*logout[\s\S]*help/)
-  assert.match(signInRequiredCard().text, /native sign-in prompt/)
-  assert.match(signedOutCard().text, /Teams session and Entra consent are unchanged/)
+  assert.match(helpCard().attachments[0].content.fallbackText, /hello \/ other text[\s\S]*whoami[\s\S]*logout[\s\S]*help/)
+  assert.match(signInRequiredCard().attachments[0].content.fallbackText, /native sign-in prompt/)
+  assert.match(signedOutCard().attachments[0].content.fallbackText, /Teams session and Entra consent are unchanged/)
 })
 
 test('echo preserves normalized text in fallback and escapes card Markdown formatting', () => {
   const activity = echoCard('[synthetic link](https://example.com) *test*')
-  assert.match(activity.text, /Echo: \[synthetic link\]\(https:\/\/example.com\) \*test\*/)
+  assert.match(activity.attachments[0].content.fallbackText, /Echo: \[synthetic link\]\(https:\/\/example.com\) \*test\*/)
   const description = activity.attachments[0].content.body[2].text
   assert.ok(description.includes('\\[synthetic link\\]\\(https://example\\.com\\) \\*test\\*'))
-  assert.match(activity.text, /does not require sign-in/)
+  assert.match(activity.attachments[0].content.fallbackText, /does not require sign-in/)
 })
 
 test('recognizable synthetic JWT is completely masked in card and all fallback text', () => {
@@ -77,9 +79,9 @@ test('recognizable synthetic JWT is completely masked in card and all fallback t
   const token = parts.join('.')
   const activity = signedInCard(tokenSummary(token))
   const output = JSON.stringify(activity)
-  assert.match(activity.text, /JWT \(fully masked\): \[header redacted\]\.\[payload redacted\]\.\[signature redacted\]/)
-  assert.match(activity.text, /bearer token is deliberately hidden/)
-  assert.equal(activity.attachments[0].content.fallbackText, activity.text)
+  assert.match(activity.attachments[0].content.fallbackText, /JWT \(fully masked\): \[header redacted\]\.\[payload redacted\]\.\[signature redacted\]/)
+  assert.match(activity.attachments[0].content.fallbackText, /bearer token is deliberately hidden/)
+  assert.equal(Object.hasOwn(activity, 'text'), false)
   for (const part of parts) {
     assert.ok(!output.includes(part))
     assert.ok(!output.includes(part.slice(0, 12)))

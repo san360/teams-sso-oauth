@@ -38,20 +38,45 @@ test('real whoami and logout methods send cards after SDK token/signout operatio
   const token = `header.${Buffer.from(JSON.stringify({ ver: '2.0', exp: 2000000000, name: 'synthetic-private-claim' })).toString('base64url')}.signature`
   const getToken = t.mock.method(agent.authorization, 'getToken', async () => ({ token }))
   await agent.whoami(f.context)
+  assert.equal(f.activities.length, 1)
   assert.equal(getToken.mock.calls[0].arguments[1], 'sso')
-  assert.match(f.activities[0].text, /Signed in/)
+  assert.match(f.activities[0].attachments[0].content.fallbackText, /Signed in/)
   assert.equal(f.activities[0].attachments[0].content.type, 'AdaptiveCard')
   assert.ok(!JSON.stringify(f.activities).includes(token))
   assert.doesNotMatch(JSON.stringify(f.activities), /synthetic-private-claim/)
   getToken.mock.mockImplementation(async () => undefined)
   await agent.whoami(f.context)
-  assert.match(f.activities[1].text, /Sign-in required/)
+  assert.equal(f.activities.length, 2)
+  assert.match(f.activities[1].attachments[0].content.fallbackText, /Sign-in required/)
   const signOut = t.mock.method(agent.authorization, 'signOut', async () => {})
   await agent.logout(f.context, {})
   assert.equal(signOut.mock.callCount(), 1)
-  assert.match(f.activities[2].text, /Signed out/)
+  assert.equal(f.activities.length, 3)
+  assert.match(f.activities[2].attachments[0].content.fallbackText, /Signed out/)
   await agent.echo({ ...f.context, activity: { text: 'hello' } })
-  assert.match(f.activities[3].text, /Echo: hello/)
+  assert.equal(f.activities.length, 4)
+  assert.match(f.activities[3].attachments[0].content.fallbackText, /Echo: hello/)
+  for (const activity of f.activities) assert.equal(Object.hasOwn(activity, 'text'), false)
+})
+
+test('registered help handler sends one card-only reply', async t => {
+  const routes = []
+  t.mock.method(AgentApplication.prototype, 'onMessage', function (selector, handler) {
+    routes.push({ selector, handler })
+    return this
+  })
+  new SsoTestAgent()
+  const f = fixture()
+  f.context.activity.text = 'help'
+  const matches = []
+  for (const candidate of routes) {
+    if (await candidate.selector(f.context)) matches.push(candidate)
+  }
+  assert.equal(matches.length, 1)
+  await matches[0].handler(f.context)
+  assert.equal(f.activities.length, 1)
+  assert.equal(Object.hasOwn(f.activities[0], 'text'), false)
+  assert.match(f.activities[0].attachments[0].content.fallbackText, /Test your SSO connection/)
 })
 
 test('real run emits safe error card for SDK sign-in exception and rethrows non-auth errors', async t => {
@@ -63,7 +88,9 @@ test('real run emits safe error card for SDK sign-in exception and rethrows non-
   })
   const run = t.mock.method(AgentApplication.prototype, 'run', async () => { throw error })
   await agent.run(f.context)
-  assert.match(f.activities[0].text, /SDK -120510, HTTP 500, ServiceError/)
+  assert.equal(f.activities.length, 1)
+  assert.equal(Object.hasOwn(f.activities[0], 'text'), false)
+  assert.match(f.activities[0].attachments[0].content.fallbackText, /SDK -120510, HTTP 500, ServiceError/)
   assert.equal(f.activities[0].attachments[0].content.type, 'AdaptiveCard')
   assert.doesNotMatch(JSON.stringify(f.activities), /synthetic-private-provider-error/)
   const nonAuth = new Error('synthetic unrelated error')

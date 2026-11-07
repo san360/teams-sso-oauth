@@ -30,7 +30,7 @@ Run `node scripts\check-publication.js --staged` before a commit, and `node scri
 | Sign-in success card | Fixed fully masked JWT schematic, selected status/version/UTC expiry, explicit diagnostic-not-validation warning; no token fragments |
 | Sign-in failure card | Safe details, configuration guidance and reference matching `signInFailure` log; no provider message |
 | Native OAuth prompt | SDK-generated sign-in button/resource unchanged; silent exchange still works where supported |
-| Card fallback and accessibility | Complete text fallback, wrapped text, readable labels and status words independent of color |
+| Card fallback and accessibility | One custom reply activity per command, no duplicate activity `text`, complete card `fallbackText`, wrapped text, readable labels and status words independent of color |
 
 Pre-authorized clients can acquire the sample API scope without an interactive consent prompt in some configurations. That does not prove all tenants, users, scopes or downstream APIs will behave identically. Conditional Access and tenant consent restrictions still apply.
 
@@ -60,7 +60,7 @@ After deploying updated source, repeat `logout` and `whoami`. Code published to 
 
 ### Reply-card compatibility
 
-The application sends informational Adaptive Cards 1.2 (`TextBlock` and `FactSet`) with the same full fallback in activity `text` and card `fallbackText`. There are no custom authentication actions, inputs, refreshes or remote images. In clients that display both activity text and attachments, the fallback may appear alongside the card. Check desktop, mobile and your supported Copilot host; actual rendering is host-controlled.
+The application sends informational Adaptive Cards 1.2 (`TextBlock` and `FactSet`) with full fallback in card `fallbackText` only. Activity `text` is omitted to prevent clients from displaying an identical prose response above the card. There are no custom authentication actions, inputs, refreshes or remote images. No channel-ID heuristics or separate plain-text sends are added; hosts control fallback support. Check desktop, mobile and your supported Copilot host for one polished card and verify fallback behavior in any supported non-card host.
 
 The echo card preserves the existing normalized echo behavior and escapes Markdown formatting in its card body. Echo still repeats user input; it is not anonymization. Help explains commands without requiring authorization. Logout is shown only after SDK sign-out succeeds; the sign-in-required status does not pretend authorization completed.
 

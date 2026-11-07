@@ -133,7 +133,7 @@ Do not enable `DEBUG=agents:*` by default: verbose dependency logs may contain i
 
 The `title` and `text` settings above belong to the **SDK OAuth prompt**. Use concise, public presentation text such as `Sign in` and `Sign in to the SSO test agent`; changing these settings is a deployment configuration update, not part of rendering the reply cards. The sample does not create its own login URL or rewrite OAuth cards.
 
-Application status replies use Adaptive Cards 1.2 with plain-text fallbacks. They show only selected diagnostics; unknown token-version values are shown as `Not available`, and malformed expiry diagnostics fail rather than displaying arbitrary payloads. Successful token acquisition is not JWT signature validation. See the [card UX guide](../README.md#card-based-conversation) and [validation matrix](TEST-RESULTS.md).
+Application status replies use card-only Adaptive Cards 1.2 with complete card `fallbackText`, not duplicate activity text. They show only selected diagnostics; unknown token-version values are shown as `Not available`, and malformed expiry diagnostics fail rather than displaying arbitrary payloads. Successful token acquisition is not JWT signature validation. See the [card UX guide](../README.md#card-based-conversation) and [validation matrix](TEST-RESULTS.md).
 
 The success card's masked JWT is a constant redacted schematic, not a configurable full-token debug view. No runtime setting enables raw credentials or partial token display. Native OAuth and invoke payloads remain SDK-managed; avoid verbose dependency logs that may contain authentication data.
 
