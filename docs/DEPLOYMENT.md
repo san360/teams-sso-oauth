@@ -18,6 +18,8 @@ flowchart LR
 
 Deployment changes Azure/Entra resources and can incur charges. Packaging produces private deployment-specific artifacts, not public release assets. Alignment checks precede installation, but only the final live exchange proves SSO.
 
+**Review the demo disclosure before deployment:** unset `WHOAMI_TOKEN_DISPLAY` defaults to `raw`, showing complete bearer JWTs and decoded claims in retained `whoami` chat replies. Use dedicated demo accounts and approved isolated chats. For metadata-only output, set App Service `WHOAMI_TOKEN_DISPLAY=masked` before serving users and restart; local development uses the same setting in ignored `.env`. For production, mask or remove the diagnostic route. The deployment script does not provision this optional display setting or remove old conversations.
+
 ## Prerequisites and permissions
 
 - Node.js **22 LTS**, npm, Azure CLI and **PowerShell 7.3+**. Use `pwsh`, not Windows PowerShell 5.1. No JavaScript build step is needed.

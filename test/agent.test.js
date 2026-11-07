@@ -17,6 +17,7 @@ const isolated = source.replace(startup, 'export default SsoTestAgent').replace(
   /from '([^']+)'/g,
   (match, name) => `from '${name.startsWith('.') ? new URL(name, root).href : pathToFileURL(require.resolve(name)).href}'`
 )
+delete process.env.WHOAMI_TOKEN_DISPLAY
 const { default: SsoTestAgent } = await import('data:text/javascript;base64,' + Buffer.from(isolated).toString('base64'))
 process.env.AgentApplication__UserAuthorization__Handlers__sso__Settings__azureBotOAuthConnectionName = 'SyntheticConnection'
 
@@ -36,14 +37,17 @@ test('real whoami and logout methods send cards after SDK token/signout operatio
   const agent = new SsoTestAgent()
   const f = fixture()
   const token = `header.${Buffer.from(JSON.stringify({ ver: '2.0', exp: 2000000000, name: 'synthetic-private-claim' })).toString('base64url')}.signature`
+  const logs = t.mock.method(console, 'log', () => {})
   const getToken = t.mock.method(agent.authorization, 'getToken', async () => ({ token }))
   await agent.whoami(f.context)
   assert.equal(f.activities.length, 1)
   assert.equal(getToken.mock.calls[0].arguments[1], 'sso')
   assert.match(f.activities[0].attachments[0].content.fallbackText, /Signed in/)
   assert.equal(f.activities[0].attachments[0].content.type, 'AdaptiveCard')
-  assert.ok(!JSON.stringify(f.activities).includes(token))
-  assert.doesNotMatch(JSON.stringify(f.activities), /synthetic-private-claim/)
+  assert.ok(f.activities[0].attachments[0].content.fallbackText.includes(token))
+  assert.match(f.activities[0].attachments[0].content.fallbackText, /synthetic-private-claim/)
+  assert.doesNotMatch(JSON.stringify(logs.mock.calls), /synthetic-private-claim/)
+  assert.ok(!JSON.stringify(logs.mock.calls).includes(token))
   getToken.mock.mockImplementation(async () => undefined)
   await agent.whoami(f.context)
   assert.equal(f.activities.length, 2)
@@ -99,15 +103,61 @@ test('real run emits safe error card for SDK sign-in exception and rethrows non-
   assert.equal(f.activities.length, 1)
 })
 
-test('failed token diagnostics or signout never produce a success card', async t => {
+test('malformed diagnostics produce one explicit safe status and failed signout produces no reply', async t => {
   const agent = new SsoTestAgent()
   const f = fixture()
   t.mock.method(agent.authorization, 'getToken', async () => ({ token: 'malformed-synthetic-token' }))
-  await assert.rejects(agent.whoami(f.context))
+  await agent.whoami(f.context)
+  assert.equal(f.activities.length, 1)
+  assert.match(f.activities[0].attachments[0].content.fallbackText, /token cannot be decoded/)
+  assert.doesNotMatch(JSON.stringify(f.activities), /malformed-synthetic-token/)
   const signoutError = new Error('synthetic signout failure')
   t.mock.method(agent.authorization, 'signOut', async () => { throw signoutError })
   await assert.rejects(agent.logout(f.context, {}), actual => actual === signoutError)
-  assert.equal(f.activities.length, 0)
+  assert.equal(f.activities.length, 1)
+})
+
+test('token-bearing transport errors propagate without private request/message/cause', async t => {
+  const agent = new SsoTestAgent()
+  const f = fixture()
+  const token = `header.${Buffer.from(JSON.stringify({ name: 'synthetic-sensitive-claim' })).toString('base64url')}.signature`
+  const logs = t.mock.method(console, 'log', () => {})
+  t.mock.method(agent.authorization, 'getToken', async () => ({ token }))
+  f.context.sendActivity = async activity => {
+    const error = new Error(`synthetic transport error ${token}`)
+    error.config = { data: activity }
+    throw error
+  }
+  await assert.rejects(agent.whoami(f.context), error => {
+    assert.equal(error.message, 'Token diagnostic card delivery failed')
+    assert.equal(error.cause, undefined)
+    assert.equal(error.config, undefined)
+    assert.ok(!error.stack.includes(token))
+    assert.doesNotMatch(error.stack, /synthetic-sensitive-claim/)
+    return true
+  })
+  assert.ok(!JSON.stringify(logs.mock.calls).includes(token))
+  assert.doesNotMatch(JSON.stringify(logs.mock.calls), /synthetic-sensitive-claim/)
+})
+
+test('explicit masked mode retains complete redaction and invalid display mode fails safely', async t => {
+  process.env.WHOAMI_TOKEN_DISPLAY = 'masked'
+  const { default: MaskedAgent } = await import('data:text/javascript;base64,' + Buffer.from(isolated + '\n// masked fixture').toString('base64'))
+  const agent = new MaskedAgent()
+  const f = fixture()
+  const token = `header.${Buffer.from(JSON.stringify({ exp: 2000000000, name: 'synthetic-masked-claim' })).toString('base64url')}.signature`
+  t.mock.method(agent.authorization, 'getToken', async () => ({ token }))
+  await agent.whoami(f.context)
+  assert.equal(f.activities.length, 1)
+  assert.match(f.activities[0].attachments[0].content.fallbackText, /JWT \(fully masked\)/)
+  assert.ok(!JSON.stringify(f.activities).includes(token))
+  assert.doesNotMatch(JSON.stringify(f.activities), /synthetic-masked-claim/)
+  process.env.WHOAMI_TOKEN_DISPLAY = 'synthetic-invalid-setting'
+  await assert.rejects(import('data:text/javascript;base64,' + Buffer.from(isolated + '\n// invalid fixture').toString('base64')), error => {
+    assert.equal(error.message, 'WHOAMI_TOKEN_DISPLAY must be raw or masked')
+    return true
+  })
+  delete process.env.WHOAMI_TOKEN_DISPLAY
 })
 
 test('send observer leaves native OAuthCard and invoke response unchanged', async t => {

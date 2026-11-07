@@ -1,7 +1,7 @@
 // Minimal Teams / Microsoft 365 Copilot agent for testing Bot SSO (signin/tokenExchange).
 //
 //   any text  -> echo (no sign-in required, proves message delivery)
-//   whoami    -> requires sign-in via the "sso" handler, replies with non-identifying status
+//   whoami    -> requires sign-in via "sso"; demo default discloses token/claims in chat
 //   logout    -> clears the cached user token from the Bot Framework Token Service
 //   help      -> shows commands without sign-in
 //
@@ -12,9 +12,11 @@ import { AgentApplication, MemoryStorage } from '@microsoft/agents-hosting'
 import { ActivityTypes } from '@microsoft/agents-activity'
 import { commandText, tokenSummary } from './diagnostics.js'
 import { reportSignInFailure, runWithSignInErrors } from './signInErrors.js'
-import { echoCard, helpCard, signedInCard, signedOutCard, signInRequiredCard } from './cards.js'
+import { echoCard, helpCard, signedInCard, signedOutCard, signInRequiredCard, tokenDetailsCard } from './cards.js'
 
 const SSO_HANDLER = 'sso'
+const TOKEN_DISPLAY = process.env.WHOAMI_TOKEN_DISPLAY ?? 'raw'
+if (!['raw', 'masked'].includes(TOKEN_DISPLAY)) throw new TypeError('WHOAMI_TOKEN_DISPLAY must be raw or masked')
 
 // Callers supply only non-identifying flow markers, never token or activity payloads.
 function log (event, data) {
@@ -71,16 +73,23 @@ class SsoTestAgent extends AgentApplication {
     await context.sendActivity(echoCard(commandText(context.activity.text)))
   }
 
-  // Read the token after the route's SSO handler completes; return diagnostic metadata only.
+  // Read only after SDK authorization; demo disclosure is confined to this intentional reply.
   whoami = async (context) => {
     const tokenResponse = await this.authorization.getToken(context, SSO_HANDLER)
     if (!tokenResponse?.token) {
       await context.sendActivity(signInRequiredCard())
       return
     }
-    const summary = tokenSummary(tokenResponse.token)
+    const activity = TOKEN_DISPLAY === 'masked'
+      ? signedInCard(tokenSummary(tokenResponse.token))
+      : tokenDetailsCard(tokenResponse.token)
     log('whoami', { signedIn: true })
-    await context.sendActivity(signedInCard(summary))
+    try {
+      await context.sendActivity(activity)
+    } catch {
+      // Transport errors can retain the token-bearing request body; propagate a static failure instead.
+      throw new Error('Token diagnostic card delivery failed')
+    }
   }
 
   // Clear the user's Token Service cache, not their Teams session or Entra consent.

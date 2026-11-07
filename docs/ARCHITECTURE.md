@@ -70,12 +70,15 @@ sequenceDiagram
     Entra-->>Store: User token result
     Store-->>Agent: Token available to authorization handler
     Agent->>Channel: Unchanged SDK invoke response and signed-in reply card
-    Channel-->>Client: Status, token version and expiry with text fallback
+    Channel-->>Client: Demo warning, complete JWT, decoded claims and UTC dates
+    Note over Client: Card and fallback may remain in chat history
 ```
 
 Bot-to-channel and bot-to-Token-Service calls use **bot credentials**. Client acquisition and the OAuth exchange concern the **user's token**. The resource here is the sample's own API, not Microsoft Graph; downstream APIs need their own permissions and SDK OBO or separate connection configuration.
 
 A cached user token can skip the card/exchange path. Consent, Conditional Access, tenant policy and host support can instead require interactive sign-in. `logout` clears the Token Service cache but does not sign the user out of Teams or revoke Entra consent.
+
+The demo disclosure boundary is intentional: the authorized `whoami` reply contains the complete credential and decoded payload by default, **not** a validated identity result. Only this runtime reply/fallback receives those values; source, publication packages, application flow markers and surfaced errors do not. Payload text is escaped, decoded locally and bounded before sending. `WHOAMI_TOKEN_DISPLAY=masked` restores metadata-only output; deleting the chat or signing out is not a guarantee of token revocation or retention removal.
 
 ## 3. Configuration-related token retrieval failure
 

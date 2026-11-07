@@ -6,7 +6,7 @@ This public file is a **test procedure**, not a record of a live deployment. It 
 
 ## Offline checks
 
-Run `npm ci` and `npm test`. Tests cover formatted command matching, non-identifying token summaries, explicit failure for malformed diagnostic token payloads, reply-card structure and fallbacks, card privacy, safe sign-in error reporting and reference matching, real agent-method wiring, unchanged OAuth attachments/invoke responses, unrelated-error propagation, exact index scanning, historic identifiers, private commit metadata and PNG trailing content. These tests do not validate JWT signatures or prove Azure authentication or visual rendering in a live client.
+Run `npm ci` and `npm test`. Tests use obviously synthetic, non-credential tokens for complete raw/decoded demo rendering, readable dates, safe claim-text escaping, serialized size limits, malformed payloads, log/error privacy and masked-mode redaction. They also cover command matching, one-send card wiring, native OAuth/invoke preservation, safe sign-in reporting, unrelated-error propagation and staged/history publication checks. These tests do not validate JWT signatures or prove Azure authentication or visual rendering in a live client.
 
 Run `node scripts\check-publication.js --staged` before a commit, and `node scripts\check-publication.js --history` before public publication. See [scan limitations](PUBLICATION.md).
 
@@ -21,13 +21,14 @@ Run `node scripts\check-publication.js --staged` before a commit, and `node scri
 |---|---|
 | `hello` | Echo; proves bidirectional channel delivery |
 | `whoami` with empty Token Service cache | Sign-in completes; a successful silent flow needs no sign-in button click |
-| Reply contents | `signedIn`, token version and expiry only; no raw JWT, UPN, tenant, object ID or name |
+| Reply contents (default `raw`) | One demo-warning card with complete JWT, all decoded payload claims and UTC dates; intentional bearer/PII disclosure in chat only |
 | Logs | `outgoingOAuthCard` with resource-present flag when a card is emitted, `incomingInvoke` for token exchange, successful invoke status, `whoami` signed-in marker |
 | `logout`, then `whoami` | New Token Service authorization cycle; the client may reuse its own Entra session |
 | Unsupported/blocked silent flow | Interactive sign-in/consent or a clear failure; do not label it silent SSO success |
 | After reviewed optional admin consent | Repeat the same matrix; compare without assuming consent fixes URI/FIC mismatches |
 | `help` / echo / logout | Informational cards with clear headings and next steps; no extra sign-in requirement |
-| Sign-in success card | Fixed fully masked JWT schematic, selected status/version/UTC expiry, explicit diagnostic-not-validation warning; no token fragments |
+| Sign-in success card (`masked`) | Fixed fully masked JWT schematic, selected status/version/UTC expiry, no token fragments or identity claims |
+| Oversized / unsupported token | One explicit size-limit or format-status card; no truncated JWT, token fragments or claim values |
 | Sign-in failure card | Safe details, configuration guidance and reference matching `signInFailure` log; no provider message |
 | Native OAuth prompt | SDK-generated sign-in button/resource unchanged; silent exchange still works where supported |
 | Card fallback and accessibility | One custom reply activity per command, no duplicate activity `text`, complete card `fallbackText`, wrapped text, readable labels and status words independent of color |
@@ -64,7 +65,11 @@ The application sends informational Adaptive Cards 1.2 (`TextBlock` and `FactSet
 
 The echo card preserves the existing normalized echo behavior and escapes Markdown formatting in its card body. Echo still repeats user input; it is not anonymization. Help explains commands without requiring authorization. Logout is shown only after SDK sign-out succeeds; the sign-in-required status does not pretend authorization completed.
 
-`whoami` deliberately displays `[header redacted].[payload redacted].[signature redacted]` instead of the JWT. Tests use a recognizable synthetic JWT and assert that its complete value, segments, prefixes/suffixes and identity claims are absent from the card and fallback. Diagnostic parsing rejects malformed compact-token shapes and non-numeric expiry values; this structural check is not signature validation. Only known version values are retained. Never paste a real bearer token into chat to compare it with the schematic.
+The demo default intentionally renders the complete JWT and formatted decoded payload in wrapped monospace blocks, with a bearer-access/chat-retention warning and readable date facts. Standard labels describe `iss`, `aud`, `sub`, `oid`, `tid`, `scp` and `roles`; original values remain in the JSON. Arbitrary claim keys/values are escaped text, not actions, links or executable card configuration. Missing date claims show `Not present`; invalid supplied dates, non-object/non-UTF-8 payloads, malformed compact shapes and nesting above 32 levels produce a static safe status without token/claims.
+
+The application budget is **24 KiB UTF-8 and 48 KiB UTF-16 for the serialized activity**, including duplicated content inside card fallback, escaping and Unicode. Tests check the largest fitting result and the next rejected result. Over-budget cards show an explicit display limit, never partial credentials or external uploads. This conservative application budget is below the [Teams recommended 80 KB message size](https://learn.microsoft.com/microsoftteams/platform/bots/how-to/format-your-bot-messages#message-size-limits), not a guarantee for every Copilot host. Check your actual clients.
+
+Set `WHOAMI_TOKEN_DISPLAY=masked` and restart to test the retained fully redacted schematic and allowlisted version/expiry. Tests assert the synthetic token, segments, prefixes/suffixes and identifying claims are absent in masked mode. Invalid display settings fail startup. App logging retains only the signed-in marker; token-card delivery failures propagate a static error without the transport's token-bearing request body/cause. Other command and authorization handling is unchanged. Neither decoding nor masking validates signatures, revokes credentials or removes retained chat. Never capture real token cards in repository screenshots, logs or issue reports.
 
 Public schema references: [AdaptiveCard fallback](https://learn.microsoft.com/adaptive-cards/schema-explorer/adaptive-card#properties), [TextBlock](https://learn.microsoft.com/adaptive-cards/schema-explorer/text-block), [FactSet](https://learn.microsoft.com/adaptive-cards/schema-explorer/fact-set).
 

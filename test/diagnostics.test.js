@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { commandText, tokenSummary } from '../src/diagnostics.js'
+import { commandText, tokenSummary, tokenPayload, tokenDate } from '../src/diagnostics.js'
 
 test('commands accept Teams and Copilot formatting', () => {
   for (const text of ['whoami', ' WHOAMI ', '/whoami', '\\whoami', '<strong>whoami</strong>', '&nbsp;whoami&nbsp;']) {
@@ -8,6 +8,26 @@ test('commands accept Teams and Copilot formatting', () => {
   }
   assert.equal(commandText(), '')
   assert.equal(commandText('hello'), 'hello')
+})
+
+test('decoder rejects invalid UTF-8, noncanonical payload encoding and excessive nesting safely', () => {
+  const nested = '{"synthetic":'.repeat(34) + '{}' + '}'.repeat(34)
+  for (const payload of [Buffer.from([255]), Buffer.from(nested)]) {
+    assert.throws(() => tokenPayload(`header.${payload.toString('base64url')}.signature`), error => {
+      assert.equal(error.cause, undefined)
+      assert.doesNotMatch(error.message, /synthetic/)
+      return error instanceof TypeError
+    })
+  }
+  assert.throws(() => tokenPayload('header.Zh.signature'), TypeError)
+  for (const value of ['synthetic-private-date', null, Infinity, NaN, 1e300]) {
+    assert.throws(() => tokenDate(value), error => {
+      assert.equal(error.message, 'Invalid token date diagnostic')
+      return error instanceof TypeError
+    })
+  }
+  assert.equal(tokenDate(undefined), 'Not present')
+  assert.equal(tokenDate(0), '1970-01-01T00:00:00.000Z')
 })
 
 test('token status excludes raw token and all identifying claims', () => {

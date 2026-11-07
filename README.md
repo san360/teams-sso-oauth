@@ -5,11 +5,11 @@ A minimal JavaScript custom engine agent using Microsoft 365 Agents SDK. It demo
 | Command | Behavior |
 |---|---|
 | `hello` (or any other text) | Echo without sign-in; confirms message delivery |
-| `whoami` | Triggers the `sso` authorization handler; shows sign-in status, token version and expiry, not user identity or the token |
+| `whoami` | Triggers `sso`; demo default shows the complete bearer JWT, decoded payload and readable UTC dates in one card |
 | `logout` | Clears the Bot Framework Token Service cache for this user; does not sign out Teams or revoke Entra consent |
 | `help` | Shows the command guide without sign-in |
 
-This is a diagnostic sample, not a production identity service. It uses in-memory storage and echoes user input. Do not send sensitive messages. SDK authentication protects the bot endpoint; decoded token metadata is diagnostic only and must never be used for access-control decisions.
+**Demo-only disclosure:** `whoami` intentionally reveals the user's bearer credential and potentially personal claims in retained chat. The credential can grant access; do not forward or screenshot the reply. Sanitized GitHub source does not sanitize runtime conversations. Use only dedicated demo accounts and an approved isolated chat. This is not a production identity service; it uses in-memory storage and echoes user input. SDK authentication protects the bot endpoint; local JWT decoding is **not signature validation** and must never be used for access-control decisions.
 
 ## Documentation
 
@@ -29,7 +29,11 @@ When sign-in token retrieval fails on `whoami`, the bot reports a safe diagnosti
 
 Replies use compact Adaptive Cards with status headings, readable diagnostic facts and a clear next step. Success, sign-in failure, sign-in-required status, logout, help and echo each send one card-only activity, with complete `fallbackText` inside the card. Activity `text` is omitted so card-capable clients do not display a duplicate prose reply. Status is expressed in words, not color alone.
 
-The successful `whoami` card includes **JWT (fully masked)**: `[header redacted].[payload redacted].[signature redacted]`, alongside allowlisted token version and UTC expiry. This is a fixed schematic, not token content: no prefix, suffix, raw bearer credential or decoded identity claims are displayed or logged. The text fallback applies the same complete masking.
+By default, successful `whoami` shows **Raw JWT (complete)** in wrapped monospace text, **Decoded payload (all claims)** as formatted JSON, a standard-claim guide, and readable `exp`/`iat`/`nbf` UTC dates when present. Decoding happens locally; no external decoder, upload or custom action is used. Claim values are escaped text, not executable card properties or links. The card's complete fallback also contains the credential and claims, so the same disclosure warning applies to fallback hosts.
+
+For metadata-only replies, set the application setting **`WHOAMI_TOKEN_DISPLAY=masked`** before starting/restarting the app. That mode retains a fixed fully redacted schematic plus allowlisted version and expiry, with no real token fragments or identity claims. Only `raw` and `masked` are accepted; an omitted setting means `raw`. Production deployments should use masked mode or remove the diagnostic `whoami` route entirely, not merely hide its help entry. Changing modes cannot remove previously retained messages or revoke issued tokens.
+
+The complete serialized token activity, including fallback and Markdown escaping, is capped at **24 KiB UTF-8 / 48 KiB UTF-16**. An oversized result produces one explicit limit card with no token/claims, never a silently truncated credential. Malformed compact JWTs, invalid supplied date claims and excessive nesting produce a safe format-status card. App flow markers and surfaced errors do not contain the token or claims; avoid verbose dependency/transport logging.
 
 **Sign-in remains native:** the SDK-generated OAuth card, its sign-in button and token-exchange resource are unchanged. The informational reply cards contain no custom login links, input fields or submit actions. They use schema **1.2** with basic `TextBlock`/`FactSet` elements for conservative Teams/Copilot compatibility; verify rendering in your actual clients after deployment. These source changes do not update the live service automatically.
 
@@ -65,7 +69,7 @@ Replace the IDs in your ignored `.env`. User-assigned managed identity authentic
 ## Repository layout
 
 ```text
-src/                         agent and non-identifying token diagnostics
+src/                         agent, demo token display and masked diagnostics
 test/                        offline diagnostic tests
 infra/deploy.ps1             Azure/Entra provisioning and code deployment
 appPackage/                  placeholder manifest template and sample icons
