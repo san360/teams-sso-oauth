@@ -1,5 +1,7 @@
 # End-to-end SSO configuration
 
+[Overview](../README.md) | [Architecture](ARCHITECTURE.md) | [Deploy](DEPLOYMENT.md) | [Troubleshoot](TEST-RESULTS.md)
+
 This sample targets Azure public cloud with the global Bot Framework Token Service. Sovereign clouds and regional token endpoints require coordinated changes to URLs, audiences and manifest domains. All deployment-specific values below are placeholders.
 
 ## 1. Distinguish the three identities
@@ -151,6 +153,8 @@ This is an explanatory excerpt, not a complete installable manifest. Use `script
 When updating an installed app, preserve the generated local Teams app ID and increase the manifest version. Upload the new package and allow policy/installation propagation. A source change alone does not update an installed manifest.
 
 ## 6. Expected runtime flow
+
+See the [successful SSO sequence and failure-path diagrams](ARCHITECTURE.md#2-successful-whoami-with-no-cached-user-token) for the identity and service boundaries.
 
 1. `whoami` requires authorization. If no cached user token exists, the SDK emits an OAuth card with a token-exchange resource.
 2. Teams/Copilot obtains a token for the exposed API as a pre-authorized client. Errors here can appear in Entra sign-in logs without reaching the bot.

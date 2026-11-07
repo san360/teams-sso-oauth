@@ -1,10 +1,12 @@
 # Repeatable validation procedure
 
+[Overview](../README.md) | [Architecture](ARCHITECTURE.md) | [Configure](CONFIGURATION.md) | [Deploy](DEPLOYMENT.md)
+
 This public file is a **test procedure**, not a record of a live deployment. It deliberately contains no tenant IDs, user names, deployment names, private timestamps or captured tokens. Keep actual results in approved private storage. Live Teams/Copilot SSO must be verified in your own tenant after deploying.
 
 ## Offline checks
 
-Run `npm ci` and `npm test`. Tests cover formatted command matching, non-identifying token summaries, explicit failure for malformed diagnostic token payloads, exact index scanning, historic identifiers, private commit metadata and PNG trailing content. These tests do not validate JWT signatures or prove Azure authentication.
+Run `npm ci` and `npm test`. Tests cover formatted command matching, non-identifying token summaries, explicit failure for malformed diagnostic token payloads, safe sign-in error reporting and reference matching, unrelated-error propagation, exact index scanning, historic identifiers, private commit metadata and PNG trailing content. These tests do not validate JWT signatures or prove Azure authentication.
 
 Run `node scripts\check-publication.js --staged` before a commit, and `node scripts\check-publication.js --history` before public publication. See [scan limitations](PUBLICATION.md).
 
@@ -40,5 +42,15 @@ Direct Line/Web Chat message delivery or an OAuth card is useful for baseline de
 | Interactive sign-in only | Verify silent exchange separately; interactive OAuth success alone is insufficient |
 | App installation fails | Manifest schema/version, separate SSO app ID in `webApplicationInfo.id`, bot/custom-engine ID alignment, valid metadata/icons and tenant policy |
 | Configuration command fails | Required Azure/Graph permissions, native CLI error, app-name collisions or replication delay |
+
+### Token retrieval fails before the sign-in callback
+
+A wrong runtime OAuth connection name can make `GetTokenOrSignInResource` fail before the SDK invokes `onSignInFailure`. In Agents SDK 1.10.1, the authorization manager wraps a thrown sign-in error as SDK code `-120510` and passes it toward the adapter's turn-error handling. Without application handling, the user sees a generic agent-error message rather than the sign-in callback's response.
+
+The sample intercepts known sign-in errors (`-120510`, or missing-connection configuration code `-120591` if raised during the turn) only on `whoami` message turns. It reports a failed sign-in, an available numeric HTTP status, an allowlisted provider code and a generated reference. For example, an HTTP 500 `ServiceError` remains a generic token-retrieval failure: it does **not** prove the provider explicitly reported "connection not found." Compare the runtime handler's connection name with the connections actually configured on Azure Bot.
+
+The matching `signInFailure` log marker contains only that reference and allowlisted diagnostic fields, never provider messages, tokens, claims, connection values, URLs or stacks. The existing sign-in-failure callback uses the same safe reporting. Unrelated errors, other commands and invoke turns retain SDK error handling; startup configuration errors still fail startup. A failure while sending the error response is not swallowed. Verbose SDK/service logs remain a separate privacy concern.
+
+After deploying updated source, repeat `logout` and `whoami`. Code published to GitHub does not automatically update the running Azure service.
 
 Entra sign-in logs may be delayed. Diagnostic scripts require separate reporting permissions and can return restricted data. Never copy raw tokens into web tools or public issue reports.

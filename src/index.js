@@ -10,6 +10,7 @@ import { startServer } from '@microsoft/agents-hosting-express'
 import { AgentApplication, MemoryStorage, MessageFactory } from '@microsoft/agents-hosting'
 import { ActivityTypes } from '@microsoft/agents-activity'
 import { commandText, tokenSummary } from './diagnostics.js'
+import { reportSignInFailure, runWithSignInErrors } from './signInErrors.js'
 
 const SSO_HANDLER = 'sso'
 
@@ -27,9 +28,8 @@ class SsoTestAgent extends AgentApplication {
   constructor () {
     super({ storage: new MemoryStorage() })
 
-    this.authorization.onSignInFailure(async (context, state, handlerId) => {
-      log('signInFailure', { handlerId })
-      await context.sendActivity('Sign-in failed. Ask the deployment administrator to check the OAuth connection and Entra sign-in logs.')
+    this.authorization.onSignInFailure(async (context, state, handlerId, error) => {
+      await reportSignInFailure(context, error, log)
     })
 
     this.onMessage(isCommand('whoami'), this.whoami, [SSO_HANDLER])
@@ -60,7 +60,7 @@ class SsoTestAgent extends AgentApplication {
       return next()
     })
 
-    return super.run(context)
+    return runWithSignInErrors(context, () => super.run(context), log)
   }
 
   // Confirm channel delivery without initiating user authorization.

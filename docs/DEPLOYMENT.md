@@ -1,5 +1,23 @@
 # Deployment runbook
 
+[Overview](../README.md) | [Architecture](ARCHITECTURE.md) | [Configure](CONFIGURATION.md) | [Troubleshoot](TEST-RESULTS.md)
+
+## Deployment at a glance
+
+```mermaid
+flowchart LR
+    Review["Review permissions<br/>and choose dedicated target"]
+    Provision["Provision Azure resources<br/>and Entra SSO configuration"]
+    Runtime["Wire SDK settings<br/>and deploy source zip"]
+    Package["Build private Teams package<br/>preserve its app ID"]
+    Verify["Verify configuration alignment"]
+    Install["Install app under tenant policy"]
+    Test["Test echo, whoami<br/>and logout cycle"]
+    Review --> Provision --> Runtime --> Package --> Verify --> Install --> Test
+```
+
+Deployment changes Azure/Entra resources and can incur charges. Packaging produces private deployment-specific artifacts, not public release assets. Alignment checks precede installation, but only the final live exchange proves SSO.
+
 ## Prerequisites and permissions
 
 - Node.js **22 LTS**, npm, Azure CLI and **PowerShell 7.3+**. Use `pwsh`, not Windows PowerShell 5.1. No JavaScript build step is needed.

@@ -12,10 +12,17 @@ This is a diagnostic sample, not a production identity service. It uses in-memor
 
 ## Documentation
 
-- [SSO configuration](docs/CONFIGURATION.md): exact ID mapping, Entra app, federated credential, Azure Bot OAuth connection, runtime settings and Teams manifest.
-- [Deployment runbook](docs/DEPLOYMENT.md): prerequisites, Azure deployment, Teams packaging/install, verification, updates and cleanup.
-- [Test procedure](docs/TEST-RESULTS.md): repeatable validation matrix and troubleshooting; no private deployment results.
-- [Publication hygiene](docs/PUBLICATION.md): scan scope, safe history and handling of generated settings/logs.
+| Start here | What it explains |
+|---|---|
+| [Architecture and flow diagrams](docs/ARCHITECTURE.md) | Bot vs user identity, successful `whoami` sequence and safe failure path |
+| [SSO configuration](docs/CONFIGURATION.md) | Exact ID mapping, Entra/FIC, OAuth connection, runtime settings and manifest |
+| [Deployment runbook](docs/DEPLOYMENT.md) | Prerequisites, deployment flow, Teams installation, updates and cleanup |
+| [Validation and troubleshooting](docs/TEST-RESULTS.md) | Repeatable checks, error interpretation and log references |
+| [Publication hygiene](docs/PUBLICATION.md) | Scan scope, clean history and private generated settings/logs |
+
+**Two independent concerns:** the managed identity authenticates the **bot's service calls**; the separate Entra SSO app and named OAuth connection obtain the **user's token**. A working echo proves channel delivery, not user SSO.
+
+When sign-in token retrieval fails on `whoami`, the bot reports a safe diagnostic code/status and a generated reference instead of the SDK's generic agent-error reply. Administrators can match that reference to the application's `signInFailure` log marker. Raw provider error text is deliberately not displayed.
 
 ## Quick start
 
